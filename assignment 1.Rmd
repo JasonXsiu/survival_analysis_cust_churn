@@ -5,9 +5,11 @@ library(survminer)
 library(survival)
 library(broom)
 library(ggfortify)
+library(tidyr)
 ## Remove the line break in the file name! churn_dat <-
 churn_dat <-read_csv("https://raw.githubusercontent.com/square/pysurvival/master/pysurvival/datasets/churn.csv")
 churn_dat <- churn_dat %>% filter(months_active > 0)
+set.seed(12345)
 ```
 
 
@@ -317,18 +319,52 @@ Use a non-parametric bootstrap to construct 90% conﬁdence intervals for the me
 ```{r}
 company_size <- unique(churn_dat$company_size)
 Avg_median <- rbind(s1_median,s2_median,s3_median,s4_median,s5_median)
-y <- tibble(company_size, Avg_median)
+#y <- tibble(company_size,Avg_median)
+y <- tibble(Avg_median)
 ```
 
 ```{r}
-n_sample = dim(y)[1]
-
+set.seed(12345)
+#y = rnorm(100, 3, 1)
+n_sample <-  nrow(y)
 
 bootstrap <- tibble(experiment = rep(1:10000, each =n_sample),
                     ind = sample(1:n_sample, size = n_sample*10000, 
                                  replace = TRUE) ,
-                                 ystar = y[ind])
+                    ystar = y[ind,] # R you sure it is   y[ind,]  or  y[ind] 
+                    )%>% unpack(ystar)
+
+
+y_bar<- mean(y$Avg_median)# mean of Avg_median
+bias <- bootstrap %>%
+    group_by(experiment) %>%
+    summarise(delta = y_bar - mean(Avg_median))
+boot_ci <-y_bar + quantile(bias$delta, c(0.1, 0.9)) #bootstrap interval at 90%
+
+
 
 
 ```
+
+
+• Make a plot that shows that estimate of the median and the corresponding conﬁdence interval on the same axes
+```{r}
+colours <- ggthemes::colorblind_pal()(4)
+
+bias %>% ggplot(aes(x = delta + y_bar)) +
+    geom_histogram(aes(y = after_stat(density)),
+                   fill = colours[1],
+                   alpha = 0.6)  +
+    stat_bin(binwidth = .2)+
+    geom_vline(xintercept = y_bar, colour = colours[2]) +
+    geom_vline(xintercept = boot_ci[1], linetype = "dashed",
+               colour = colours[3]) +
+    geom_vline(xintercept = boot_ci[2], linetype = "dashed",
+               colour = colours[3]) 
+
+
+
+
+```
+
 

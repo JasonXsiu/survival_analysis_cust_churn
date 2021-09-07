@@ -20,17 +20,7 @@ view(churn_dat)
 ```
 
 
-
-```{r}
-#install.packages("epitools")
-library("epitools")
-kapmeier
-```
-
-
-
 ```{r Q1-function}
-#https://rdrr.io/cran/epitools/man/kapmeier.html#heading-0
 #t = at a particular time period
 #n = # of the individuals that are still surviving at t (i.e customer still using our services)
 #d = # of event at t (i.e customer left)
@@ -65,62 +55,13 @@ result <- as.data.frame(result)
 
 
 ```{r}
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
+ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step ()+theme_bw()
 ```
 
 
 
 ====================== Q1 B
 
-```{r company-size-1}
-unique(churn_dat$company_size)
-#10-50
-df_10to50 <-  churn_dat %>% filter(company_size == "10-50")
-
-time <-  df_10to50$months_active 
-event <- df_10to50$churned
-result <- KM_estimate(time, event)
-result <- as.data.frame(result)
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
-
-#100-250
-df_100to250 <- churn_dat %>% filter(company_size ==  "100-250")
-
-time <-  df_100to250$months_active 
-event <- df_100to250$churned
-result <- KM_estimate(time, event)
-result <- as.data.frame(result)
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
-
-
-#"50-100" 
-df_50to100 <- churn_dat %>% filter(company_size ==  "50-100")
-
-time <-  df_50to100$months_active 
-event <- df_50to100$churned
-result <- KM_estimate(time, event)
-result <- as.data.frame(result)
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
-
-
-#"1-10"
-df_1to10 <- churn_dat %>% filter(company_size ==  "1-10")
-
-time <-  df_1to10$months_active 
-event <- df_1to10$churned
-result <- KM_estimate(time, event)
-result <- as.data.frame(result)
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
-
-# "self-employed"
-
-df_self_employed <- churn_dat %>% filter(company_size ==  "self-employed")
-time <-  df_self_employed$months_active 
-event <- df_self_employed$churned
-result <- KM_estimate(time, event)
-result <- as.data.frame(result)
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step()
-```
 
 ```{r}
 df_10to50 <-  churn_dat %>% filter(company_size == "10-50")
@@ -168,30 +109,43 @@ s5_event <- df_self_employed$churned
 s5_result <- KM_estimate(s5_time, s5_event)
 s5_result <- as.data.frame(s5_result)
 
+```
+
+```{r plot-by-sizes}
+
 colors <- c("s1"="red", "s2" = "blue","s3" = "green","s4" = "pink","s5" = "black")
 
 ggplot()+
     geom_step(data =s1_result,  
               aes(x=time, y = survival,
-              color = "s1"))+
+              color = "s1"),
+              size = 1.5)+
     geom_step(data =s2_result,  
               aes(x=time, y = survival,
-              color = "s2"))+
+              color = "s2"),
+              size = 1.5)+
     geom_step(data =s3_result,  
               aes(x=time, y = survival,
-              color = "s3"))+
+              color = "s3"),
+              size = 1.5)+
     geom_step(data =s4_result,  
               aes(x=time, y = survival,
-              color = "s4"))+
+              color = "s4"),
+              size = 1.5)+
     geom_step(data =s5_result,  
               aes(x=time, y = survival,
-              color = "s5"))+
+              color = "s5"),
+              size = 1.5,
+              linetype = 2)+
     labs(x= 'Time',
          y="Prob.Survival",
          color = 'Legend')+
         scale_color_manual(values = colors)+
-    theme_bw()
+    theme_bw()+
+    theme(legend.position = c(.1,.26))
 ```
+
+
 
 
 ====================== Q2 A
@@ -227,86 +181,42 @@ event <- df_10to50$churned
 
 fit <- surv_fit(Surv(time,event)~1, data = df_10to50) 
 #calculate the avg median
-s1_median <- average_median(fit)
+s1_median <- near_median(fit)
 s1_median
 
 #find out if we use avg median or near median
 fit <-  fit%>% tidy()#tidy the "fit"
-fortify(round(fit,3))
+df <- fortify(round(fit,3))
+df[s1_median,]
 ```
 'The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are near equally far from 0.5 (which are  0.505 and  0.493 respectively), we can use the average median of 5.5 as the most suitable measure of the median.'
 
+```{r median-estimation-function}
 
+estimate_median <- function(size){
+df <- churn_dat %>% filter(company_size == size)
+time <-  df$months_active 
+event <- df$churned
+fit <- surv_fit(Surv(time,event)~1, data = df) 
 
-```{r Q2-200to250}
-#100-250
-df_100to250 <- churn_dat %>% filter(company_size ==  "100-250")
-time <-  df_100to250$months_active 
-event <- df_100to250$churned
+#find the index of the near median
+index <- near_median(fit)
 
-fit <- surv_fit(Surv(time,event)~1, data = df_100to250) 
-#calculate the avg median
-s2_median <- average_median(fit)
-s2_median
-
-#find out if we use avg median or near median
+#return the median of churn time
 fit <-  fit%>% tidy()#tidy the "fit"
-fortify(round(fit,3))
-
+df <- fortify(round(fit,3))
+return(df[index,])
+}
 
 ```
 
-```{r Q2-50to100}
-#"50-100" 
-df_50to100 <- churn_dat %>% filter(company_size ==  "50-100")
-time <-  df_50to100$months_active 
-event <- df_50to100$churned
-
-
-fit <- surv_fit(Surv(time,event)~1, data = df_50to100) 
-#calculate the avg median
-s3_median <- average_median(fit)
-s3_median
-
-#find out if we use avg median or near median
-fit <-  fit%>% tidy()#tidy the "fit"
-fortify(round(fit,3))
-
-```
-
-```{r Q2 1-10}
-#"1-10"
-df_1to10 <- churn_dat %>% filter(company_size ==  "1-10")
-
-time <-  df_1to10$months_active 
-event <- df_1to10$churned
-
-
-fit <- surv_fit(Surv(time,event)~1, data = df_1to10) 
-#calculate the avg median
-s4_median <- average_median(fit)
-s4_median
-
-#find out if we use avg median or near median
-fit <-  fit%>% tidy()#tidy the "fit"
-fortify(round(fit,3))
-```
-
-```{r Q2 self-employed}
-# "self-employed"
-df_self_employed <- churn_dat %>% filter(company_size ==  "self-employed")
-time <-  df_self_employed$months_active 
-event <- df_self_employed$churned
-
-
-fit <- surv_fit(Surv(time,event)~1, data = df_self_employed) 
-#calculate the avg median
-s5_median <- average_median(fit)
-s5_median
-
-#find out if we use avg median or near median
-fit <-  fit%>% tidy()#tidy the "fit"
-fortify(round(fit,3))
+```{r estimate-median}
+#here estimate median based on sizes
+estimate_median("10-50")
+estimate_median("100-250")
+estimate_median("50-100")
+estimate_median("1-10")
+estimate_median("self-employed")
 ```
 
 
@@ -316,17 +226,14 @@ fortify(round(fit,3))
 
 Use a non-parametric bootstrap to construct 90% conﬁdence intervals for the median of each company size
 
-```{r}
-company_size <- unique(churn_dat$company_size)
-Avg_median <- rbind(s1_median,s2_median,s3_median,s4_median,s5_median)
-#y <- tibble(company_size,Avg_median)
-y <- tibble(Avg_median)
-```
 
-```{r}
+#this is the wrong version previously made
+```{r 10-50}
 set.seed(12345)
-#y = rnorm(100, 3, 1)
-n_sample <-  nrow(y)
+
+
+y <- df_10to50 %>% select(time) %>% average_median()
+n_sample <-  nrow(df_10to50)
 
 bootstrap <- tibble(experiment = rep(1:10000, each =n_sample),
                     ind = sample(1:n_sample, size = n_sample*10000, 
@@ -339,7 +246,7 @@ y_bar<- mean(y$Avg_median)# mean of Avg_median
 bias <- bootstrap %>%
     group_by(experiment) %>%
     summarise(delta = y_bar - mean(Avg_median))
-boot_ci <-y_bar + quantile(bias$delta, c(0.1, 0.9)) #bootstrap interval at 90%
+boot_ci <-y_bar + quantile(bias$delta, c(0.05, 0.95)) #bootstrap interval at 90%
 
 
 
@@ -347,24 +254,57 @@ boot_ci <-y_bar + quantile(bias$delta, c(0.1, 0.9)) #bootstrap interval at 90%
 ```
 
 
-• Make a plot that shows that estimate of the median and the corresponding conﬁdence interval on the same axes
+```{r bootstrap}
+#create a function of  the dataframe by sizes
+boot <- function(size,n_sims){
+#1. filter data into a particular size
+df <- churn_dat %>% filter(company_size == size)
+n = nrow(df)
+#2. run the bootstrap
+experiments = tibble(experiment = rep(1:n_sims, each = n),
+                     index = sample(1:n, size = n * n_sims, replace = TRUE),
+                     time_star = df$months_active[index],
+                     event_star = df$churned[index])
+return(experiments)
+}
+
+```
+
+```{r plotting-hist}
+
+#create a function for plotting
+plot_boot_data <- function(experiments){
+  fit <- survfit(Surv(time_star, event_star) ~ experiment, data = experiments)
+  #get the median of surv
+  med <- surv_median(fit)
+  med <- data.frame(med = med$median)
+  ggplot(med , aes(x = med, fill= med)) +
+    geom_histogram(binwidth = .8)+theme_bw()
+}
+```
+
+
 ```{r}
-colours <- ggthemes::colorblind_pal()(4)
+# for the sake of testing, the sample size is set to 10, instead of 1000
+set.seed(9999)
+#"10-50"
+df_10to50 <- boot("10-50",10)
+plot_boot_data(df_10to50)
 
-bias %>% ggplot(aes(x = delta + y_bar)) +
-    geom_histogram(aes(y = after_stat(density)),
-                   fill = colours[1],
-                   alpha = 0.6)  +
-    stat_bin(binwidth = .2)+
-    geom_vline(xintercept = y_bar, colour = colours[2]) +
-    geom_vline(xintercept = boot_ci[1], linetype = "dashed",
-               colour = colours[3]) +
-    geom_vline(xintercept = boot_ci[2], linetype = "dashed",
-               colour = colours[3]) 
+#"100-250"
+df_100to250 <- boot("100-250",10)
+plot_boot_data(df_100to250)
+
+#"50-100"
+df_50to100 <- boot("50-100",10)
+plot_boot_data(df_50to100)
+
+#"1-10"              
+df_1to10 <- boot("1-10",10)
+plot_boot_data(df_1to10)
 
 
-
-
+#"self-employed"
+df_self_employed <- boot("self-employed",10)
+plot_boot_data(df_self_employed)
 ```
-
-

@@ -252,7 +252,42 @@ boot_ci <-y_bar + quantile(bias$delta, c(0.05, 0.95)) #bootstrap interval at 90%
 
 
 ```
+```{r median_at_90_percent}
+median_at_90_percent <- function (fit, combine = FALSE) 
+{
+    .median <- function(fit) {
+        if (!is.null(fit$strata) | is.matrix(fit$surv)) {
+            .table <- as.data.frame(summary(fit)$table)
+        }
+        else {
+            .table <- t(as.data.frame(summary(fit)$table)) %>% 
+                as.data.frame()
+            rownames(.table) <- "All"
+        }
+        .table$strata <- rownames(.table)
+        .table <- .table %>% dplyr::select_(.dots = c("strata", 
+            "median", "`0.9LCL`", "`0.9UCL`"))
+        colnames(.table) <- c("strata", "median", 
+            "lower", "upper")
+        rownames(.table) <- NULL
+        .table
+    }
+   .median(fit)
+}
+```
 
+```{r plotting-hist-new}
+
+#create a function for plotting
+plot_boot_data <- function(experiments){
+  fit <- survfit(Surv(time_star, event_star) ~ experiment, data = experiments,conf.int= 0.9)
+  #get the median of surv
+  med <- median_at_90_percent(fit)
+  med <- data.frame(med = med$median)
+  ggplot(med , aes(x = med, fill= med)) +
+    geom_histogram(binwidth = .8)+theme_bw()
+}
+```
 
 ```{r bootstrap}
 #create a function of  the dataframe by sizes
@@ -276,7 +311,7 @@ return(experiments)
 plot_boot_data <- function(experiments){
   fit <- survfit(Surv(time_star, event_star) ~ experiment, data = experiments)
   #get the median of surv
-  med <- surv_median(fit)
+  med <- median_at_90_percent(fit)
   med <- data.frame(med = med$median)
   ggplot(med , aes(x = med, fill= med)) +
     geom_histogram(binwidth = .8)+theme_bw()
@@ -308,3 +343,7 @@ plot_boot_data(df_1to10)
 df_self_employed <- boot("self-employed",10)
 plot_boot_data(df_self_employed)
 ```
+
+
+
+

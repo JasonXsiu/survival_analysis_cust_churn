@@ -12,12 +12,7 @@ churn_dat <- churn_dat %>% filter(months_active > 0)
 set.seed(12345)
 ```
 
-
-• Write a function that takes a survival pair (time, event) and uses it to compute the Kaplan-Meier estimate of the survival function. It should work for any survival data. 
-
-```{r}
-view(churn_dat)
-```
+====================== Q1 A
 
 
 ```{r Q1-function}
@@ -55,7 +50,13 @@ result <- as.data.frame(result)
 
 
 ```{r}
-ggplot(result, aes(x=time, y = survival))+geom_point()+geom_step ()+theme_bw()
+ggplot(result, aes(x=time, y = survival))+
+  geom_point()+
+  geom_step ()+
+  theme_bw()+
+  ggtitle("The Kaplan-Meier curve for the full data") + 
+  labs(x= 'Time',
+         y="Prob.Survival")
 ```
 
 
@@ -113,28 +114,28 @@ s5_result <- as.data.frame(s5_result)
 
 ```{r plot-by-sizes}
 
-colors <- c("s1"="red", "s2" = "blue","s3" = "green","s4" = "pink","s5" = "black")
+colors <- c("10-50"="red", "100-250" = "blue","50-100" = "green","1-10" = "pink","self-employed" = "black")
 
 ggplot()+
     geom_step(data =s1_result,  
               aes(x=time, y = survival,
-              color = "s1"),
+              color = "10-50"),
               size = 1.5)+
     geom_step(data =s2_result,  
               aes(x=time, y = survival,
-              color = "s2"),
+              color = "100-250"),
               size = 1.5)+
     geom_step(data =s3_result,  
               aes(x=time, y = survival,
-              color = "s3"),
+              color = "50-100"),
               size = 1.5)+
     geom_step(data =s4_result,  
               aes(x=time, y = survival,
-              color = "s4"),
+              color = "1-10"),
               size = 1.5)+
     geom_step(data =s5_result,  
               aes(x=time, y = survival,
-              color = "s5"),
+              color = "self-employed"),
               size = 1.5,
               linetype = 2)+
     labs(x= 'Time',
@@ -142,7 +143,13 @@ ggplot()+
          color = 'Legend')+
         scale_color_manual(values = colors)+
     theme_bw()+
-    theme(legend.position = c(.1,.26))
+    theme(legend.position = c(.1,.26))+
+    ggtitle("The Kaplan-Meier curve for each company size")
+
+
+
+
+
 ```
 
 
@@ -154,11 +161,11 @@ ggplot()+
 
 
 near_median <- function(fit){
-if (length(fit$n) > 1) {
-stop("This only works for a single survival curve!")
-}
-index <- which.min(abs(fit$surv - 0.5))
-return(fit$time[index])
+  if (length(fit$n) > 1) {
+    stop("This only works for a single survival curve!")
+  }
+  index <- which.min(abs(fit$surv - 0.5))
+  return(fit$time[index])
 }
 
 average_median <- function(fit) {
@@ -172,59 +179,76 @@ return((fit$time[lower_ind] + fit$time[upper_ind])/2)
 
 
 ```
-```{r Q2-10to50}
 
-#10-50
-df_10to50 <-  churn_dat %>% filter(company_size == "10-50")
-time <-  df_10to50$months_active 
-event <- df_10to50$churned
 
-fit <- surv_fit(Surv(time,event)~1, data = df_10to50) 
-#calculate the avg median
-s1_median <- near_median(fit)
-s1_median
+```{r filter_df}
 
-#find out if we use avg median or near median
-fit <-  fit%>% tidy()#tidy the "fit"
-df <- fortify(round(fit,3))
-df[s1_median,]
-```
-'The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are near equally far from 0.5 (which are  0.505 and  0.493 respectively), we can use the average median of 5.5 as the most suitable measure of the median.'
-
-```{r median-estimation-function}
-
-estimate_median <- function(size){
+filter_df <- function(size){
 df <- churn_dat %>% filter(company_size == size)
 time <-  df$months_active 
 event <- df$churned
 fit <- surv_fit(Surv(time,event)~1, data = df) 
 
-#find the index of the near median
-index <- near_median(fit)
-
-#return the median of churn time
-fit <-  fit%>% tidy()#tidy the "fit"
-df <- fortify(round(fit,3))
-return(df[index,])
+return(fit)
 }
 
 ```
 
-```{r estimate-median}
+```{r 10-50}
 #here estimate median based on sizes
-estimate_median("10-50")
-estimate_median("100-250")
-estimate_median("50-100")
-estimate_median("1-10")
-estimate_median("self-employed")
+fit <- filter_df("10-50")
+fit %>% tidy()
 ```
+'The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are near equally far from 0.5 (which are  0.505 and  0.493 respectively).
 
+Therefore, for size 10-50, the average median is `r average_median(fit)`
+
+```{r 100-250}
+#here estimate median based on sizes
+fit <- filter_df("100-250")
+fit %>% tidy()
+```
+The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are NOT  nearly equal to 0.5 (which are  0.54 and  0.45 respectively), we can use the average median of 5.5 as the most suitable measure of the median.
+
+Therefore, for size 100-250, the near median is `r near_median(fit)`
+
+
+```{r 50-100}
+#here estimate median based on sizes
+fit <- filter_df("50-100")
+fit %>% tidy()
+```
+The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  0.51 and  0.48 respectively)
+
+Therefore, for size 50-100, the near median is `r average_median(fit)`
+
+
+
+```{r 1-10}
+#here estimate median based on sizes
+fit <- filter_df("1-10")
+fit %>% tidy()
+```
+The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  .50 and  .49 respectively)
+
+Therefore, for size 1-10, the near median is `r average_median(fit)`
+
+```{r self-employed}
+#here estimate median based on sizes
+fit <- filter_df("self-employed")
+fit %>% tidy()
+```
+The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  .50 and  .47 respectively)
+
+Therefore, for size "self-employed", the near median is `r average_median(fit)`
 
 
 
 ====================== Q2 B
+Since the previously defined function could only work for a single survival curve, therefore, this function is made. 
 
-Use a non-parametric bootstrap to construct 90% conﬁdence intervals for the median of each company size
+The following function was reference from surv_median from the survminer package. Nonetheless, its the median survival with upper and lower confidence limits for the median at 95% confidence levels. So, I changed it to a way that it can compute the median at 90% CI instead. 
+
 
 ```{r median_at_90_percent}
 median_at_90_percent <- function (fit, combine = FALSE) 
@@ -239,33 +263,9 @@ median_at_90_percent <- function (fit, combine = FALSE)
             rownames(.table) <- "All"
         }
         .table$strata <- rownames(.table)
-        .table <- .table %>% dplyr::select_(.dots = c("strata", 
-            "median", "`0.9LCL`", "`0.9UCL`"))
-        colnames(.table) <- c("strata", "median", 
-            "lower", "upper")
-        rownames(.table) <- NULL
-        .table
-    }
-   .median(fit)
-}
-```
-```{r median_at_90_percent-new}
-median_at_90_percent <- function (fit, combine = FALSE) 
-{
-    .median <- function(fit) {
-        if (!is.null(fit$strata) | is.matrix(fit$surv)) {
-            .table <- as.data.frame(summary(fit)$table)
-        }
-        else {
-            .table <- t(as.data.frame(summary(fit)$table)) %>% 
-                as.data.frame()
-            rownames(.table) <- "All"
-        }
-        .table$strata <- rownames(.table)
         .table <- .table %>% dplyr::select_(.dots = c( 
             "median"))
-        colnames(.table) <- c("median" 
-            )
+        colnames(.table) <- c("median")
         rownames(.table) <- NULL
         .table
     }
@@ -273,7 +273,7 @@ median_at_90_percent <- function (fit, combine = FALSE)
 }
 ```
 
-```{r plotting-hist-new}
+```{r plotting-hist}
 
 #create a function for plotting
 plot_boot_data <- function(experiments){
@@ -303,27 +303,26 @@ return(experiments)
 ```
 
 ```{r}
-# for the sake of testing, the sample size is set to 10, instead of 1000
 set.seed(999)
 #"10-50"
-df_10to50 <- boot("10-50",10)
+df_10to50 <- boot("10-50",1000)
 plot_boot_data(df_10to50)
 
 #"100-250"
-df_100to250 <- boot("100-250",10)
+df_100to250 <- boot("100-250",1000)
 plot_boot_data(df_100to250)
 
 #"50-100"
-df_50to100 <- boot("50-100",10)
+df_50to100 <- boot("50-100",1000)
 plot_boot_data(df_50to100)
 
 #"1-10"              
-df_1to10 <- boot("1-10",10)
+df_1to10 <- boot("1-10",1000)
 plot_boot_data(df_1to10)
 
 
 #"self-employed"
-df_self_employed <- boot("self-employed",10)
+df_self_employed <- boot("self-employed",10000)
 plot_boot_data(df_self_employed)
 ```
 

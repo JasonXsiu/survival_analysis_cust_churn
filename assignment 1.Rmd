@@ -198,6 +198,7 @@ return(fit)
 #here estimate median based on sizes
 fit <- filter_df("10-50")
 fit %>% tidy()
+s1_median <- average_median(fit)
 ```
 'The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are near equally far from 0.5 (which are  0.505 and  0.493 respectively).
 
@@ -207,6 +208,8 @@ Therefore, for size 10-50, the average median is `r average_median(fit)`
 #here estimate median based on sizes
 fit <- filter_df("100-250")
 fit %>% tidy()
+s2_median <- near_median(fit)
+
 ```
 The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are NOT  nearly equal to 0.5 (which are  0.54 and  0.45 respectively), we can use the average median of 5.5 as the most suitable measure of the median.
 
@@ -217,6 +220,8 @@ Therefore, for size 100-250, the near median is `r near_median(fit)`
 #here estimate median based on sizes
 fit <- filter_df("50-100")
 fit %>% tidy()
+s3_median <- average_median(fit)
+
 ```
 The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  0.51 and  0.48 respectively)
 
@@ -228,6 +233,8 @@ Therefore, for size 50-100, the near median is `r average_median(fit)`
 #here estimate median based on sizes
 fit <- filter_df("1-10")
 fit %>% tidy()
+s4_median <- average_median(fit)
+
 ```
 The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  .50 and  .49 respectively)
 
@@ -237,6 +244,8 @@ Therefore, for size 1-10, the near median is `r average_median(fit)`
 #here estimate median based on sizes
 fit <- filter_df("self-employed")
 fit %>% tidy()
+s5_median <- average_median(fit)
+
 ```
 The median time is where the survival probability is equal to 0.5. Although there is no exact time where this occurs we know that the median exists between times 5 and 6. As the survival probabilities of the two times are  nearly equal to  0.5 (which are  .50 and  .47 respectively)
 
@@ -248,6 +257,7 @@ Therefore, for size "self-employed", the near median is `r average_median(fit)`
 Since the previously defined function could only work for a single survival curve, therefore, this function is made. 
 
 The following function was reference from surv_median from the survminer package. Nonetheless, its the median survival with upper and lower confidence limits for the median at 95% confidence levels. So, I changed it to a way that it can compute the median at 90% CI instead. 
+
 
 
 ```{r median_at_90_percent}
@@ -263,9 +273,10 @@ median_at_90_percent <- function (fit, combine = FALSE)
             rownames(.table) <- "All"
         }
         .table$strata <- rownames(.table)
-        .table <- .table %>% dplyr::select_(.dots = c( 
-            "median"))
-        colnames(.table) <- c("median")
+        .table <- .table %>% dplyr::select_(.dots = c("strata", 
+            "median", "`0.9LCL`", "`0.9UCL`"))
+        colnames(.table) <- c("strata", "median", 
+            "lower", "upper")
         rownames(.table) <- NULL
         .table
     }
@@ -273,16 +284,33 @@ median_at_90_percent <- function (fit, combine = FALSE)
 }
 ```
 
-```{r plotting-hist}
 
+```{r plotting-hist}
 #create a function for plotting
-plot_boot_data <- function(experiments){
+
+plot_boot_data <- function(experiments, size, s_median){
   fit <- survfit(Surv(time_star, event_star) ~ experiment, data = experiments,conf.int= 0.9)
   #get the median of surv
-  med <- median_at_90_percent(fit)
-  med <- data.frame(med = med$median)
+  surv_med <- median_at_90_percent(fit)
+  surv_med <- data.frame(surv_med)
+  med <-  surv_med$median
+  med <- data.frame(med)
+  #get the upper CI
+  upper <-  mean(surv_med$upper, na=T)
+
+  #get the lower CI
+  lower <- mean(surv_med$lower, na=T) 
+
   ggplot(med , aes(x = med, fill= med)) +
-    geom_histogram(binwidth = .8)+theme_bw()
+    geom_histogram(binwidth = .8)+
+    geom_vline(xintercept = upper, colour="blue",linetype="dashed")+
+    geom_vline(xintercept = lower, colour="blue",linetype="dashed")+
+    geom_vline(xintercept = s_median, colour="black")+
+    ggtitle(  paste("The estimate of the median for", size))+
+      labs(x= 'Median',
+         y="Count")+
+    theme_bw()
+    
 }
 ```
 
@@ -291,9 +319,9 @@ plot_boot_data <- function(experiments){
 boot <- function(size,n_sims){
 #1. filter data into a particular size
 df <- churn_dat %>% filter(company_size == size)
-n = nrow(df)
+n <-  nrow(df)
 #2. run the bootstrap
-experiments = tibble(experiment = rep(1:n_sims, each = n),
+experiments <-  tibble(experiment = rep(1:n_sims, each = n),
                      index = sample(1:n, size = n * n_sims, replace = TRUE),
                      time_star = df$months_active[index],
                      event_star = df$churned[index])
@@ -302,28 +330,31 @@ return(experiments)
 
 ```
 
+
+
 ```{r}
 set.seed(999)
 #"10-50"
 df_10to50 <- boot("10-50",1000)
-plot_boot_data(df_10to50)
+
+plot_boot_data(df_10to50, "10-50",s1_median)
 
 #"100-250"
 df_100to250 <- boot("100-250",1000)
-plot_boot_data(df_100to250)
+plot_boot_data(df_100to250,"100-250",s2_median)
 
 #"50-100"
 df_50to100 <- boot("50-100",1000)
-plot_boot_data(df_50to100)
+plot_boot_data(df_50to100,"50-100",s3_median)
 
 #"1-10"              
 df_1to10 <- boot("1-10",1000)
-plot_boot_data(df_1to10)
+plot_boot_data(df_1to10,"1-10",s4_median)
 
 
 #"self-employed"
-df_self_employed <- boot("self-employed",10000)
-plot_boot_data(df_self_employed)
+df_self_employed <- boot("self-employed",1000)
+plot_boot_data(df_self_employed,"self-employed",s5_median)
 ```
 
 

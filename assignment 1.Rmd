@@ -153,6 +153,13 @@ ggplot()+
 ```
 
 
+Interpretation :
+
+The Kaplan-Meier curves for each respective company size are overall pretty similar in shape. They all exhibit the same early drop offs in survival probability followed by more stability in the back two thirds of the time period.
+
+The somewhat outlier of the group however is the company size of 100 to 250 clients. Its curve drops lower, a lot earlier than the rest of the curves, this indicates it is losing customers quicker than the others and, with the curve finishing lowest out of the five, also illustrates that it has a lower rate of keeping customers long term and hence a higher customer churn rate. Another interesting feature of the graph is the self-employed data. The graph for the self-employed companies shows the graph running off from about time 6 indicating that no more clients had churned from that point onwards to the point of censoring. However, this company size also had the lowest number of observations being only 62 which could explain the disparity in customer churn to the other companies. 
+
+Although size of data definitely plays a role in determining the shape and pattern of the graphs, a more logical reason to explain the graphs could be that companies with larger numbers of clients may struggle to attain the same depth and quality of business-client relations as their low client number counterparts, hence resulting in higher customer churn rates.
 
 
 ====================== Q2 A
